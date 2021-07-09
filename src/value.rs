@@ -2,7 +2,7 @@ use std::hash::Hash;
 use std::ops::{Add, Div, Mul, Sub};
 
 use derivative::Derivative;
-use num_traits::Inv;
+use num_traits::{Inv, One, Zero};
 
 use crate::unit::{ScalableUnit, UnitSystem};
 
@@ -113,5 +113,28 @@ where
 				unit: self.unit.unit,
 			},
 		}
+	}
+}
+
+impl<U: UnitSystem, T> Zero for Value<T, U>
+where
+	U::BaseUnit: Hash + Eq,
+	T: Zero + One + PartialEq,
+{
+	fn zero() -> Self {
+		Self {
+			value: T::zero(),
+			unit: ScalableUnit::new_dimensionless(T::one()),
+		}
+	}
+
+	// note: the below impls treat e.g. 0 meters as being zero, even though zero() only returns dimensionless 0
+
+	fn set_zero(&mut self) {
+		self.value.set_zero()
+	}
+
+	fn is_zero(&self) -> bool {
+		self.value.is_zero()
 	}
 }

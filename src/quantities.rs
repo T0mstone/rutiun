@@ -15,10 +15,10 @@ pub mod isq {
 	use std::ops::{Div, Mul};
 
 	use num_traits::{Inv, Pow};
+	use BaseQuantity::*;
 
 	use super::{Quantity, SystemOfQuantities};
 	use crate::{Integer, Rational};
-	use BaseQuantity::*;
 
 	pub struct ISQ;
 
