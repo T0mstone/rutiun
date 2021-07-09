@@ -203,33 +203,30 @@ impl<U: UnitSystem> Unit<U> {
 	pub fn one() -> Self {
 		Self::default()
 	}
+}
 
-	pub fn new_base_pow(base: U::BaseUnit, power: Rational) -> Self
-	where
-		U::BaseUnit: Hash + Eq,
-	{
+impl<U: UnitSystem> Unit<U>
+where
+	U::BaseUnit: Hash + Eq,
+{
+	pub fn new_base_pow(base: U::BaseUnit, power: Rational) -> Self {
 		Self(Composite::new_base_pow(base, power))
 	}
 
-	pub fn new_base(base: U::BaseUnit) -> Self
-	where
-		U::BaseUnit: Hash + Eq,
-	{
+	pub fn new_base(base: U::BaseUnit) -> Self {
 		Self(Composite::new_base(base))
 	}
 
-	pub fn from_quantity(quantity: Quantity<U::SystemOfQuantities>) -> Self
-	where
-		U::BaseUnit: Hash + Eq,
-	{
+	pub fn from_quantity(quantity: Quantity<U::SystemOfQuantities>) -> Self {
 		Self(quantity.0.map_keys(U::base_unit))
 	}
 
-	pub fn into_quantity(self) -> Quantity<U::SystemOfQuantities>
-	where
-		U::BaseQuantity: Hash + Eq,
-	{
+	pub fn into_quantity(self) -> Quantity<U::SystemOfQuantities> {
 		Quantity(self.0.map_keys(U::base_quantity))
+	}
+
+	pub fn has_dimension(&self, dim: Quantity<U::SystemOfQuantities>) -> bool {
+		*self == Self::from_quantity(dim)
 	}
 }
 

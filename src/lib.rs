@@ -1,7 +1,8 @@
-#[cfg(not(feature = "big-rational"))]
-type Rational = num_rational::Rational64;
-#[cfg(feature = "big-rational")]
-type Rational = num_rational::BigRational;
+#[cfg(not(feature = "big-arith"))]
+pub type Integer = i64;
+#[cfg(feature = "big-arith")]
+pub type Integer = num_bigint::BigInt;
+pub type Rational = num_rational::Ratio<Integer>;
 
 mod composite;
 

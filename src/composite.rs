@@ -69,11 +69,11 @@ impl<K> Inv for Composite<K> {
 
 	fn inv(mut self) -> Self::Output {
 		self.powers.values_mut().for_each(|v| {
-			#[cfg(feature = "big-rational")]
+			#[cfg(feature = "big-arith")]
 			{
 				*v = -v.clone();
 			}
-			#[cfg(not(feature = "big-rational"))]
+			#[cfg(not(feature = "big-arith"))]
 			{
 				*v = -*v;
 			}

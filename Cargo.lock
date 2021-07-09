@@ -84,6 +84,7 @@ name = "rutiun"
 version = "0.1.0"
 dependencies = [
  "derivative",
+ "num-bigint",
  "num-rational",
  "num-traits",
 ]

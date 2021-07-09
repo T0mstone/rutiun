@@ -7,10 +7,11 @@ description = "run time units"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-big-rational = ["num-rational/num-bigint"]
+big-arith = ["num-rational/num-bigint", "num-bigint"]
 
 [dependencies]
 num-traits = "0.2.14"
+num-bigint = { version = "0.4.0", optional = true }
 derivative = "2.2.0"
 
 [dependencies.num-rational]

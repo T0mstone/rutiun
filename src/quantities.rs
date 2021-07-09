@@ -5,7 +5,6 @@ use derivative::Derivative;
 use num_traits::Inv;
 
 use crate::composite::Composite;
-use crate::quantities::isq::BaseQuantity;
 use crate::Rational;
 
 pub trait SystemOfQuantities {
@@ -14,6 +13,10 @@ pub trait SystemOfQuantities {
 
 pub mod isq {
 	use super::SystemOfQuantities;
+	use crate::quantities::Quantity;
+	use crate::{Integer, Rational};
+	use num_traits::Inv;
+	use std::ops::{Div, Mul};
 
 	pub struct ISQ;
 
@@ -37,6 +40,40 @@ pub mod isq {
 		Substance,
 		/// luminous intensity, J
 		LumIntensity,
+	}
+
+	impl BaseQuantity {
+		pub fn pow(self, pow: Rational) -> Quantity<ISQ> {
+			Quantity::new_base_pow(self, pow)
+		}
+
+		pub fn ipow(self, pow: Integer) -> Quantity<ISQ> {
+			self.pow(Rational::from_integer(pow))
+		}
+	}
+
+	impl Mul for BaseQuantity {
+		type Output = Quantity<ISQ>;
+
+		fn mul(self, rhs: Self) -> Self::Output {
+			Quantity::new_base(self) * Quantity::new_base(rhs)
+		}
+	}
+
+	impl Div for BaseQuantity {
+		type Output = Quantity<ISQ>;
+
+		fn div(self, rhs: Self) -> Self::Output {
+			Quantity::new_base(self) / Quantity::new_base(rhs)
+		}
+	}
+
+	impl Inv for BaseQuantity {
+		type Output = Quantity<ISQ>;
+
+		fn inv(self) -> Self::Output {
+			self.ipow(Integer::from(-1i8))
+		}
 	}
 }
 
