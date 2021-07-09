@@ -4,7 +4,7 @@ use std::hash::Hash;
 use std::ops::{Div, Mul};
 
 use derivative::Derivative;
-use num_traits::{Inv, One};
+use num_traits::{Inv, One, Pow};
 
 use crate::Rational;
 
@@ -92,5 +92,24 @@ where
 	#[allow(clippy::suspicious_arithmetic_impl)]
 	fn div(self, rhs: Self) -> Self::Output {
 		self * rhs.inv()
+	}
+}
+
+impl<K> Pow<Rational> for Composite<K> {
+	type Output = Self;
+
+	fn pow(mut self, rhs: Rational) -> Self::Output {
+		self.powers.values_mut().for_each(|v| {
+			#[cfg(feature = "big-arith")]
+			{
+				*v *= rhs.clone();
+			}
+			#[cfg(not(feature = "big-arith"))]
+			{
+				*v = rhs;
+			}
+		});
+
+		self
 	}
 }
