@@ -18,6 +18,7 @@ pub mod isq {
 
 	use super::{Quantity, SystemOfQuantities};
 	use crate::{Integer, Rational};
+	use BaseQuantity::*;
 
 	pub struct ISQ;
 
@@ -34,7 +35,7 @@ pub mod isq {
 		/// time, T
 		Time,
 		/// electric current, I
-		Current,
+		ElectricCurrent,
 		/// thermodynamic temperature, Θ
 		Temperature,
 		/// amount of substance, N
@@ -135,33 +136,88 @@ pub mod isq {
 
 	impl Quantity<ISQ> {
 		#[inline]
+		pub fn area() -> Self {
+			Length.pow(2)
+		}
+
+		#[inline]
+		pub fn volume() -> Self {
+			Length.pow(3)
+		}
+
+		#[inline]
+		pub fn frequency() -> Self {
+			Time.inv()
+		}
+
+		#[inline]
 		pub fn velocity() -> Self {
-			BaseQuantity::Length * BaseQuantity::Time.pow(-1)
+			Length * Time.pow(-1)
 		}
 
 		#[inline]
 		pub fn acceleration() -> Self {
-			BaseQuantity::Length * BaseQuantity::Time.pow(-2)
+			Length * Time.pow(-2)
 		}
 
 		#[inline]
 		pub fn momentum() -> Self {
-			BaseQuantity::Mass * Self::velocity()
+			Mass * Self::velocity()
 		}
 
 		#[inline]
 		pub fn force() -> Self {
-			BaseQuantity::Mass * Self::acceleration()
+			Mass * Self::acceleration()
 		}
 
 		#[inline]
 		pub fn energy() -> Self {
-			BaseQuantity::Mass * BaseQuantity::Length.pow(2) * BaseQuantity::Time.pow(-2)
+			Mass * Length.pow(2) * Time.pow(-2)
 		}
 
 		#[inline]
 		pub fn power() -> Self {
-			BaseQuantity::Mass * BaseQuantity::Length.pow(2) * BaseQuantity::Time.pow(-3)
+			Mass * Length.pow(2) * Time.pow(-3)
+		}
+
+		#[inline]
+		pub fn electric_charge() -> Self {
+			Time * ElectricCurrent
+		}
+
+		#[inline]
+		pub fn electric_potential() -> Self {
+			Length.pow(2) * Mass * Time.pow(-3) * ElectricCurrent.pow(-1)
+		}
+
+		#[inline]
+		pub fn electric_resistance() -> Self {
+			Length.pow(2) * Mass * Time.pow(-3) * ElectricCurrent.pow(-2)
+		}
+
+		#[inline]
+		pub fn voltage() -> Self {
+			Self::electric_potential()
+		}
+
+		#[inline]
+		pub fn luminance() -> Self {
+			Length.pow(-2) * LumIntensity
+		}
+
+		#[inline]
+		pub fn mass_density() -> Self {
+			Mass * Length.pow(-3)
+		}
+
+		#[inline]
+		pub fn heat_capacity() -> Self {
+			Mass * Length.pow(2) * Time.pow(-2) * Temperature.pow(-1)
+		}
+
+		#[inline]
+		pub fn specific_heat_capacity() -> Self {
+			Length.pow(2) * Time.pow(-2) * Temperature.pow(-1)
 		}
 	}
 }

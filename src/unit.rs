@@ -64,7 +64,7 @@ pub mod si {
 		}
 
 		pub fn ampere() -> Self {
-			Self(BaseQuantity::Current)
+			Self(BaseQuantity::ElectricCurrent)
 		}
 
 		pub fn kelvin() -> Self {
@@ -86,7 +86,7 @@ pub mod si {
 				BaseQuantity::Length => "meter",
 				BaseQuantity::Mass => "kilogram",
 				BaseQuantity::Time => "second",
-				BaseQuantity::Current => "ampere",
+				BaseQuantity::ElectricCurrent => "ampere",
 				BaseQuantity::Temperature => "kelvin",
 				BaseQuantity::Substance => "mole",
 				BaseQuantity::LumIntensity => "candela",
@@ -98,7 +98,7 @@ pub mod si {
 				BaseQuantity::Length => "m",
 				BaseQuantity::Mass => "kg",
 				BaseQuantity::Time => "s",
-				BaseQuantity::Current => "A",
+				BaseQuantity::ElectricCurrent => "A",
 				BaseQuantity::Temperature => "K",
 				BaseQuantity::Substance => "mol",
 				BaseQuantity::LumIntensity => "cd",
@@ -314,11 +314,12 @@ impl<U: UnitSystem, S> ScalableUnit<U, S> {
 		self.unit.to_quantity()
 	}
 
-	pub fn has_dimension(&self, dim: Quantity<U::SystemOfQuantities>) -> bool
+	pub fn has_dimension<D>(&self, dim: D) -> bool
 	where
 		U::BaseUnit: Hash + Eq,
+		D: Into<Quantity<U::SystemOfQuantities>>,
 	{
-		self.unit == Unit::from_quantity(dim)
+		self.unit == Unit::from_quantity(dim.into())
 	}
 }
 
