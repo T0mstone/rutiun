@@ -19,13 +19,20 @@ pub struct Composite<K> {
 }
 
 impl<K> Composite<K> {
-	pub fn new_base(base: K) -> Self
+	pub fn new_base_pow(base: K, power: Rational) -> Self
 	where
 		K: Eq + Hash,
 	{
 		let mut powers = HashMap::with_capacity(1);
-		powers.insert(base, Rational::one());
+		powers.insert(base, power);
 		Self { powers }
+	}
+
+	pub fn new_base(base: K) -> Self
+	where
+		K: Eq + Hash,
+	{
+		Self::new_base_pow(base, Rational::one())
 	}
 
 	pub fn map_keys<F: FnMut(K) -> L, L: Eq + Hash>(self, mut f: F) -> Composite<L> {

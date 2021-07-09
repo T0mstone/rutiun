@@ -7,6 +7,7 @@ use num_traits::{Inv, One};
 
 use crate::composite::Composite;
 use crate::quantities::{Quantity, SystemOfQuantities};
+use crate::Rational;
 
 pub trait BaseUnit {
 	fn long_name(&self) -> Cow<'static, str>;
@@ -201,6 +202,13 @@ impl<U: UnitSystem> Inv for Unit<U> {
 impl<U: UnitSystem> Unit<U> {
 	pub fn one() -> Self {
 		Self::default()
+	}
+
+	pub fn new_base_pow(base: U::BaseUnit, power: Rational) -> Self
+	where
+		U::BaseUnit: Hash + Eq,
+	{
+		Self(Composite::new_base_pow(base, power))
 	}
 
 	pub fn new_base(base: U::BaseUnit) -> Self

@@ -5,6 +5,8 @@ use derivative::Derivative;
 use num_traits::Inv;
 
 use crate::composite::Composite;
+use crate::quantities::isq::BaseQuantity;
+use crate::Rational;
 
 pub trait SystemOfQuantities {
 	type BaseQuantity;
@@ -82,6 +84,13 @@ impl<Q: SystemOfQuantities> Inv for Quantity<Q> {
 impl<Q: SystemOfQuantities> Quantity<Q> {
 	pub fn new_dimensionless() -> Self {
 		Self::default()
+	}
+
+	pub fn new_base_pow(base: Q::BaseQuantity, power: Rational) -> Self
+	where
+		Q::BaseQuantity: Hash + Eq,
+	{
+		Self(Composite::new_base_pow(base, power))
 	}
 
 	pub fn new_base(base: Q::BaseQuantity) -> Self
