@@ -1,0 +1,19 @@
+[package]
+name = "dynit"
+version = "0.1.0"
+edition = "2018"
+description = "dynamic (runtime) units"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+big-rational = ["num-rational/num-bigint"]
+
+[dependencies]
+num-traits = "0.2.14"
+derivative = "2.2.0"
+
+[dependencies.num-rational]
+version = "0.4.0"
+features = ["std"]
+default-features = false
