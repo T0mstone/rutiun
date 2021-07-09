@@ -1,8 +1,8 @@
 [package]
-name = "dynit"
+name = "rutiun"
 version = "0.1.0"
 edition = "2018"
-description = "dynamic (runtime) units"
+description = "run time units"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
