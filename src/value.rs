@@ -3,9 +3,10 @@ use std::marker::PhantomData;
 use std::ops::{Add, Div, Mul, Sub};
 
 use derivative::Derivative;
-use num_traits::{Inv, One, Zero};
+use num_traits::{Inv, One, Pow, Zero};
 
 use crate::unit::{ScalableUnit, UnitForValue, UnitSystem};
+use crate::{Clopy, Integer, Rational};
 
 #[derive(Derivative)]
 #[derivative(
@@ -75,6 +76,75 @@ where
 		Value {
 			value: self.value * rhs.value,
 			unit: self.unit * rhs.unit,
+			_marker: PhantomData,
+		}
+	}
+}
+
+impl<S: UnitSystem, T, U: UnitForValue<S, T>> Pow<Rational> for Value<S, T, U>
+where
+	T: Pow<Rational>,
+	U: Pow<Rational>,
+	<U as Pow<Rational>>::Output: UnitForValue<S, <T as Pow<Rational>>::Output>,
+{
+	type Output = Value<S, T::Output, U::Output>;
+
+	fn pow(self, rhs: Rational) -> Self::Output {
+		Value {
+			value: self.value.pow(rhs.clopy()),
+			unit: self.unit.pow(rhs),
+			_marker: PhantomData,
+		}
+	}
+}
+
+impl<S: UnitSystem, T, U: UnitForValue<S, T>> Pow<Integer> for Value<S, T, U>
+where
+	T: Pow<Integer>,
+	U: Pow<Integer>,
+	<U as Pow<Integer>>::Output: UnitForValue<S, <T as Pow<Integer>>::Output>,
+{
+	type Output = Value<S, T::Output, U::Output>;
+
+	fn pow(self, rhs: Integer) -> Self::Output {
+		Value {
+			value: self.value.pow(rhs.clopy()),
+			unit: self.unit.pow(rhs),
+			_marker: PhantomData,
+		}
+	}
+}
+
+#[cfg(feature = "big-arith")]
+impl<S: UnitSystem, T, U: UnitForValue<S, T>> Pow<i64> for Value<S, T, U>
+where
+	T: Pow<i64>,
+	U: Pow<i64>,
+	<U as Pow<i64>>::Output: UnitForValue<S, <T as Pow<i64>>::Output>,
+{
+	type Output = Value<S, T::Output, U::Output>;
+
+	fn pow(self, rhs: i64) -> Self::Output {
+		Value {
+			value: self.value.pow(rhs),
+			unit: self.unit.pow(rhs),
+			_marker: PhantomData,
+		}
+	}
+}
+
+impl<S: UnitSystem, T, U: UnitForValue<S, T>> Pow<f64> for Value<S, T, U>
+where
+	T: Pow<f64>,
+	U: Pow<f64>,
+	<U as Pow<f64>>::Output: UnitForValue<S, <T as Pow<f64>>::Output>,
+{
+	type Output = Value<S, T::Output, U::Output>;
+
+	fn pow(self, rhs: f64) -> Self::Output {
+		Value {
+			value: self.value.pow(rhs),
+			unit: self.unit.pow(rhs),
 			_marker: PhantomData,
 		}
 	}
