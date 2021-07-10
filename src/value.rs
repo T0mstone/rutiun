@@ -133,20 +133,20 @@ where
 	}
 }
 
-impl<S: UnitSystem, T, U: UnitForValue<S, T>> Pow<f64> for Value<S, T, U>
+impl<S: UnitSystem, T, U: UnitForValue<S, T>, U2> Pow<f64> for Value<S, T, U>
 where
 	T: Pow<f64>,
-	U: Pow<f64>,
-	<U as Pow<f64>>::Output: UnitForValue<S, <T as Pow<f64>>::Output>,
+	U: Pow<f64, Output = Option<U2>>,
+	U2: UnitForValue<S, <T as Pow<f64>>::Output>,
 {
-	type Output = Value<S, T::Output, U::Output>;
+	type Output = Option<Value<S, T::Output, U2>>;
 
 	fn pow(self, rhs: f64) -> Self::Output {
-		Value {
+		Some(Value {
 			value: self.value.pow(rhs),
-			unit: self.unit.pow(rhs),
+			unit: self.unit.pow(rhs)?,
 			_marker: PhantomData,
-		}
+		})
 	}
 }
 
