@@ -44,7 +44,7 @@ pub mod si {
 	use super::{BaseUnit as BaseUnitT, SimpleUnit, UnitSystem};
 	use crate::quantities::isq::{BaseQuantity, ISQ};
 	use crate::quantities::Quantity;
-	use crate::unit::AffineUnit;
+	use crate::unit::{AffineUnit, ScalableUnit};
 	use crate::{Integer, Rational};
 
 	pub struct SI;
@@ -169,6 +169,22 @@ pub mod si {
 
 		pub fn watt() -> Self {
 			Self::from_quantity(Quantity::power())
+		}
+	}
+
+	impl<S: From<u32>> ScalableUnit<SI, S> {
+		pub fn minute() -> Self {
+			Self {
+				scale: S::from(60),
+				unit: SimpleUnit::new_base(BaseUnit::second()),
+			}
+		}
+
+		pub fn hour() -> Self {
+			Self {
+				scale: S::from(3600),
+				unit: SimpleUnit::new_base(BaseUnit::second()),
+			}
 		}
 	}
 
