@@ -460,6 +460,15 @@ impl<U: UnitSystem, S: One> From<SimpleUnit<U>> for ScalableUnit<U, S> {
 	}
 }
 
+impl<U: UnitSystem, S: One> One for ScalableUnit<U, S>
+where
+	U::BaseUnit: Hash + Eq,
+{
+	fn one() -> Self {
+		Self::from(SimpleUnit::one())
+	}
+}
+
 impl<U: UnitSystem, S: Mul<T>, T> Mul<ScalableUnit<U, T>> for ScalableUnit<U, S>
 where
 	U::BaseUnit: Hash + Eq,

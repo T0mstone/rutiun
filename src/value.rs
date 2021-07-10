@@ -1,11 +1,11 @@
 use std::hash::Hash;
 use std::marker::PhantomData;
-use std::ops::{Add, Div, Mul, Sub};
+use std::ops::{Add, Div, Mul, Neg, Sub};
 
 use derivative::Derivative;
 use num_traits::{Inv, One, Pow, Zero};
 
-use crate::unit::{ScalableUnit, UnitForValue, UnitSystem};
+use crate::unit::{AffineUnit, ScalableUnit, UnitForValue, UnitSystem};
 use crate::{Clopy, Integer, Rational};
 
 #[derive(Derivative)]
@@ -227,6 +227,18 @@ where
 	}
 }
 
+impl<S: UnitSystem, T, U: UnitForValue<S, T>> Neg for Value<S, T, U>
+where
+	T: Neg,
+	U: UnitForValue<S, T::Output>,
+{
+	type Output = Value<S, T::Output, U>;
+
+	fn neg(self) -> Self::Output {
+		self.map_value(Neg::neg)
+	}
+}
+
 impl<S: UnitSystem, T> Zero for Value<S, T, ScalableUnit<S, T>>
 where
 	S::BaseQuantity: Hash + Eq,
@@ -249,5 +261,23 @@ where
 
 	fn is_zero(&self) -> bool {
 		self.value.is_zero()
+	}
+}
+
+impl<S: UnitSystem, T, Z, O> Value<S, T, AffineUnit<S, Z, O>>
+where
+	AffineUnit<S, Z, O>: UnitForValue<S, T>,
+{
+	pub fn untranslate(self) -> Value<S, T, ScalableUnit<S, Z>>
+	where
+		T: Sub<O, Output = T>,
+		ScalableUnit<S, Z>: UnitForValue<S, T>,
+	{
+		let (value, unit) = self.unit.untranslate(self.value);
+		Value {
+			value,
+			unit,
+			_marker: PhantomData,
+		}
 	}
 }
