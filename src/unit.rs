@@ -517,6 +517,18 @@ impl<U: UnitSystem, S, O> AffineUnit<U, S, O> {
 	{
 		self.unit.clone().quantity()
 	}
+
+	#[doc(alias = "into_scalable")]
+	pub fn untranslate<V>(self, value: V) -> (V, ScalableUnit<U, S>)
+	where
+		Self: UnitForValue<U, V>,
+		V: Sub<O, Output = V>,
+	{
+		(value - self.offset, ScalableUnit {
+			scale: self.scale,
+			unit: self.unit,
+		})
+	}
 }
 
 impl<U: UnitSystem, S, T, O, P> PartialEq<AffineUnit<U, T, P>> for AffineUnit<U, S, O>
