@@ -22,11 +22,30 @@ pub struct Value<S: UnitSystem, T, U: UnitForValue<S, T>> {
 }
 
 impl<S: UnitSystem, T, U: UnitForValue<S, T>> Value<S, T, U> {
+	pub fn new(value: T, unit: U) -> Self {
+		Self {
+			value,
+			unit,
+			_marker: PhantomData,
+		}
+	}
+
 	pub fn into_unit<U2: UnitForValue<S, T>>(self, target: U2) -> Value<S, T, U2> {
 		let value = target.convert_from_simple(self.unit.convert_to_simple(self.value));
 		Value {
 			value,
 			unit: target,
+			_marker: PhantomData,
+		}
+	}
+
+	pub fn map_value<F: FnOnce(T) -> T2, T2>(self, f: F) -> Value<S, T2, U>
+	where
+		U: UnitForValue<S, T2>,
+	{
+		Value {
+			value: f(self.value),
+			unit: self.unit,
 			_marker: PhantomData,
 		}
 	}
