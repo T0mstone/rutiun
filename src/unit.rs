@@ -1,13 +1,16 @@
 use std::borrow::Cow;
 use std::hash::Hash;
-use std::ops::{Div, Mul};
+use std::ops::{Add, Div, Mul, Sub};
 
 use derivative::Derivative;
-use num_traits::{Inv, One};
+use num_traits::{Inv, One, Zero};
 
 use crate::composite::Composite;
 use crate::quantities::{Quantity, SystemOfQuantities};
 use crate::Rational;
+
+// note: IntelliJ Rust is not advanced enough for this file (8 false positive errors at the time of writing),
+// so always resort to cargo check instead!
 
 pub trait BaseUnit {
 	fn long_name(&self) -> Cow<'static, str>;
@@ -23,12 +26,25 @@ pub trait UnitSystem {
 	fn base_quantity(u: Self::BaseUnit) -> Self::BaseQuantity;
 }
 
+pub trait Unit<U: UnitSystem> {
+	fn quantity(self) -> Quantity<U::SystemOfQuantities>;
+	fn is_of(&self, q: Quantity<U::SystemOfQuantities>) -> bool;
+}
+
+pub trait UnitForValue<U: UnitSystem, V>: Unit<U> {
+	fn convert_to_simple(&self, val: V) -> V;
+	fn convert_from_simple(&self, val: V) -> V;
+}
+
 pub mod si {
 	use std::borrow::Cow;
 
-	use super::{BaseUnit as BaseUnitT, Unit, UnitSystem};
+	use num_traits::One;
+
+	use super::{BaseUnit as BaseUnitT, SimpleUnit, UnitSystem};
 	use crate::quantities::isq::{BaseQuantity, ISQ};
 	use crate::quantities::Quantity;
+	use crate::unit::AffineUnit;
 
 	pub struct SI;
 
@@ -106,7 +122,7 @@ pub mod si {
 		}
 	}
 
-	impl Unit<SI> {
+	impl SimpleUnit<SI> {
 		pub fn newton() -> Self {
 			Self::from_quantity(Quantity::force())
 		}
@@ -117,6 +133,16 @@ pub mod si {
 
 		pub fn watt() -> Self {
 			Self::from_quantity(Quantity::power())
+		}
+	}
+
+	impl<S: One, O: From<f32>> AffineUnit<SI, S, O> {
+		pub fn degree_celsius() -> Self {
+			Self {
+				scale: S::one(),
+				offset: O::from(273.15),
+				unit: SimpleUnit::new_base(BaseUnit::kelvin()),
+			}
 		}
 	}
 
@@ -214,9 +240,37 @@ pub mod si {
 	Default(bound = "")
 )]
 #[repr(transparent)]
-pub struct Unit<U: UnitSystem>(pub(crate) Composite<U::BaseUnit>);
+pub struct SimpleUnit<U: UnitSystem>(pub(crate) Composite<U::BaseUnit>);
 
-impl<U: UnitSystem> Mul for Unit<U>
+impl<U: UnitSystem> Unit<U> for SimpleUnit<U>
+where
+	U::BaseQuantity: Hash + Eq,
+	U::BaseUnit: Hash + Eq,
+{
+	fn quantity(self) -> Quantity<U::SystemOfQuantities> {
+		Quantity(self.0.map_keys(U::base_quantity))
+	}
+
+	fn is_of(&self, q: Quantity<U::SystemOfQuantities>) -> bool {
+		*self == Self::from_quantity(q)
+	}
+}
+
+impl<U: UnitSystem, V> UnitForValue<U, V> for SimpleUnit<U>
+where
+	U::BaseQuantity: Hash + Eq,
+	U::BaseUnit: Hash + Eq,
+{
+	fn convert_to_simple(&self, val: V) -> V {
+		val
+	}
+
+	fn convert_from_simple(&self, val: V) -> V {
+		val
+	}
+}
+
+impl<U: UnitSystem> Mul for SimpleUnit<U>
 where
 	U::BaseUnit: Hash + Eq,
 {
@@ -227,7 +281,7 @@ where
 	}
 }
 
-impl<U: UnitSystem> Div for Unit<U>
+impl<U: UnitSystem> Div for SimpleUnit<U>
 where
 	U::BaseUnit: Hash + Eq,
 {
@@ -238,7 +292,7 @@ where
 	}
 }
 
-impl<U: UnitSystem> Inv for Unit<U> {
+impl<U: UnitSystem> Inv for SimpleUnit<U> {
 	type Output = Self;
 
 	fn inv(self) -> Self::Output {
@@ -246,30 +300,13 @@ impl<U: UnitSystem> Inv for Unit<U> {
 	}
 }
 
-impl<U: UnitSystem> Unit<U> {
+impl<U: UnitSystem> SimpleUnit<U> {
 	pub fn one() -> Self {
 		Self::default()
 	}
 }
 
-impl<U: UnitSystem> Unit<U> {
-	pub fn into_quantity(self) -> Quantity<U::SystemOfQuantities>
-	where
-		U::BaseQuantity: Hash + Eq,
-	{
-		Quantity(self.0.map_keys(U::base_quantity))
-	}
-
-	pub fn to_quantity(&self) -> Quantity<U::SystemOfQuantities>
-	where
-		U::BaseQuantity: Hash + Eq,
-		U::BaseUnit: Clone,
-	{
-		Quantity(self.0.clone().map_keys(U::base_quantity))
-	}
-}
-
-impl<U: UnitSystem> Unit<U>
+impl<U: UnitSystem> SimpleUnit<U>
 where
 	U::BaseUnit: Hash + Eq,
 {
@@ -295,31 +332,23 @@ where
 )]
 pub struct ScalableUnit<U: UnitSystem, S> {
 	pub scale: S,
-	pub unit: Unit<U>,
+	pub unit: SimpleUnit<U>,
 }
 
 impl<U: UnitSystem, S> ScalableUnit<U, S> {
 	pub fn new_dimensionless(scale: S) -> Self {
 		Self {
 			scale,
-			unit: Unit::one(),
+			unit: SimpleUnit::one(),
 		}
 	}
 
 	pub fn to_quantity(&self) -> Quantity<U::SystemOfQuantities>
 	where
 		U::BaseQuantity: Hash + Eq,
-		U::BaseUnit: Clone,
+		U::BaseUnit: Clone + Hash + Eq,
 	{
-		self.unit.to_quantity()
-	}
-
-	pub fn has_dimension<D>(&self, dim: D) -> bool
-	where
-		U::BaseUnit: Hash + Eq,
-		D: Into<Quantity<U::SystemOfQuantities>>,
-	{
-		self.unit == Unit::from_quantity(dim.into())
+		self.unit.clone().quantity()
 	}
 }
 
@@ -333,8 +362,28 @@ where
 	}
 }
 
-impl<U: UnitSystem, S: One> From<Unit<U>> for ScalableUnit<U, S> {
-	fn from(unit: Unit<U>) -> Self {
+impl<U: UnitSystem, S> PartialEq<SimpleUnit<U>> for ScalableUnit<U, S>
+where
+	U::BaseUnit: Eq + Hash,
+	S: One + PartialEq,
+{
+	fn eq(&self, other: &SimpleUnit<U>) -> bool {
+		self.scale.is_one() && self.unit == *other
+	}
+}
+
+impl<U: UnitSystem, S> PartialEq<ScalableUnit<U, S>> for SimpleUnit<U>
+where
+	U::BaseUnit: Eq + Hash,
+	S: One + PartialEq,
+{
+	fn eq(&self, other: &ScalableUnit<U, S>) -> bool {
+		other.scale.is_one() && *self == other.unit
+	}
+}
+
+impl<U: UnitSystem, S: One> From<SimpleUnit<U>> for ScalableUnit<U, S> {
+	fn from(unit: SimpleUnit<U>) -> Self {
 		Self {
 			scale: S::one(),
 			unit,
@@ -352,6 +401,34 @@ where
 		ScalableUnit {
 			scale: self.scale * rhs.scale,
 			unit: self.unit * rhs.unit,
+		}
+	}
+}
+
+impl<U: UnitSystem, S> Mul<SimpleUnit<U>> for ScalableUnit<U, S>
+where
+	U::BaseUnit: Hash + Eq,
+{
+	type Output = ScalableUnit<U, S>;
+
+	fn mul(self, rhs: SimpleUnit<U>) -> Self::Output {
+		ScalableUnit {
+			scale: self.scale,
+			unit: self.unit * rhs,
+		}
+	}
+}
+
+impl<U: UnitSystem, S> Mul<ScalableUnit<U, S>> for SimpleUnit<U>
+where
+	U::BaseUnit: Hash + Eq,
+{
+	type Output = ScalableUnit<U, S>;
+
+	fn mul(self, rhs: ScalableUnit<U, S>) -> Self::Output {
+		ScalableUnit {
+			scale: rhs.scale,
+			unit: self * rhs.unit,
 		}
 	}
 }
@@ -378,5 +455,120 @@ impl<U: UnitSystem, S: Inv> Inv for ScalableUnit<U, S> {
 			scale: self.scale.inv(),
 			unit: self.unit.inv(),
 		}
+	}
+}
+
+impl<U: UnitSystem, S> Unit<U> for ScalableUnit<U, S>
+where
+	U::BaseQuantity: Hash + Eq,
+	U::BaseUnit: Hash + Eq,
+{
+	fn quantity(self) -> Quantity<U::SystemOfQuantities> {
+		self.unit.quantity()
+	}
+
+	fn is_of(&self, q: Quantity<U::SystemOfQuantities>) -> bool {
+		self.unit.is_of(q)
+	}
+}
+
+impl<U: UnitSystem, S, V> UnitForValue<U, V> for ScalableUnit<U, S>
+where
+	U::BaseQuantity: Hash + Eq,
+	U::BaseUnit: Hash + Eq,
+	V: Mul<S, Output = V> + Div<S, Output = V>,
+	S: Clone,
+{
+	fn convert_to_simple(&self, val: V) -> V {
+		val * self.scale.clone()
+	}
+
+	fn convert_from_simple(&self, val: V) -> V {
+		val / self.scale.clone()
+	}
+}
+
+#[derive(Derivative)]
+#[derivative(
+	Clone(bound = "U::BaseUnit: Clone, S: Clone, O: Clone"),
+	Debug(bound = "U::BaseUnit: std::fmt::Debug, S: std::fmt::Debug, O: std::fmt::Debug"),
+	Eq(bound = "U::BaseUnit: Eq + Hash, S: Eq, O: Eq"),
+	Default(bound = "S: Default, O: Default")
+)]
+pub struct AffineUnit<U: UnitSystem, S, O> {
+	pub scale: S,
+	pub offset: O,
+	pub unit: SimpleUnit<U>,
+}
+
+impl<U: UnitSystem, S, O> AffineUnit<U, S, O> {
+	pub fn new_dimensionless(scale: S, offset: O) -> Self {
+		Self {
+			scale,
+			offset,
+			unit: SimpleUnit::one(),
+		}
+	}
+
+	pub fn to_quantity(&self) -> Quantity<U::SystemOfQuantities>
+	where
+		U::BaseQuantity: Hash + Eq,
+		U::BaseUnit: Clone + Hash + Eq,
+	{
+		self.unit.clone().quantity()
+	}
+}
+
+impl<U: UnitSystem, S, T, O, P> PartialEq<AffineUnit<U, T, P>> for AffineUnit<U, S, O>
+where
+	U::BaseUnit: Eq + Hash,
+	S: PartialEq<T>,
+	O: PartialEq<P>,
+{
+	fn eq(&self, other: &AffineUnit<U, T, P>) -> bool {
+		self.scale == other.scale && self.offset == other.offset && self.unit == other.unit
+	}
+}
+
+impl<U: UnitSystem, S: One, O: Zero> From<SimpleUnit<U>> for AffineUnit<U, S, O> {
+	fn from(unit: SimpleUnit<U>) -> Self {
+		Self {
+			scale: S::one(),
+			offset: O::zero(),
+			unit,
+		}
+	}
+}
+
+impl<U: UnitSystem, S, O> Unit<U> for AffineUnit<U, S, O>
+where
+	U::BaseQuantity: Hash + Eq,
+	U::BaseUnit: Hash + Eq,
+{
+	fn quantity(self) -> Quantity<U::SystemOfQuantities> {
+		self.unit.quantity()
+	}
+
+	fn is_of(&self, q: Quantity<U::SystemOfQuantities>) -> bool {
+		self.unit.is_of(q)
+	}
+}
+
+impl<U: UnitSystem, S, O, V> UnitForValue<U, V> for AffineUnit<U, S, O>
+where
+	U::BaseQuantity: Hash + Eq,
+	U::BaseUnit: Hash + Eq,
+	S: Clone,
+	O: Clone,
+	V: Mul<S> + Sub<O>,
+	<V as Mul<S>>::Output: Add<O, Output = V>,
+	<V as Sub<O>>::Output: Div<S, Output = V>,
+{
+	fn convert_to_simple(&self, val: V) -> V {
+		val * self.scale.clone() + self.offset.clone()
+	}
+
+	fn convert_from_simple(&self, val: V) -> V {
+		(val - self.offset.clone()) / self.scale.clone()
 	}
 }
