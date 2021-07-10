@@ -28,7 +28,7 @@ pub trait UnitSystem {
 
 pub trait Unit<U: UnitSystem> {
 	fn quantity(self) -> Quantity<U::SystemOfQuantities>;
-	fn is_of(&self, q: Quantity<U::SystemOfQuantities>) -> bool;
+	fn is_of<Q: Into<Quantity<U::SystemOfQuantities>>>(&self, q: Q) -> bool;
 }
 
 pub trait UnitForValue<U: UnitSystem, V>: Unit<U> {
@@ -251,8 +251,8 @@ where
 		Quantity(self.0.map_keys(U::base_quantity))
 	}
 
-	fn is_of(&self, q: Quantity<U::SystemOfQuantities>) -> bool {
-		*self == Self::from_quantity(q)
+	fn is_of<Q: Into<Quantity<U::SystemOfQuantities>>>(&self, q: Q) -> bool {
+		*self == Self::from_quantity(q.into())
 	}
 }
 
@@ -467,7 +467,7 @@ where
 		self.unit.quantity()
 	}
 
-	fn is_of(&self, q: Quantity<U::SystemOfQuantities>) -> bool {
+	fn is_of<Q: Into<Quantity<U::SystemOfQuantities>>>(&self, q: Q) -> bool {
 		self.unit.is_of(q)
 	}
 }
@@ -549,7 +549,7 @@ where
 		self.unit.quantity()
 	}
 
-	fn is_of(&self, q: Quantity<U::SystemOfQuantities>) -> bool {
+	fn is_of<Q: Into<Quantity<U::SystemOfQuantities>>>(&self, q: Q) -> bool {
 		self.unit.is_of(q)
 	}
 }
