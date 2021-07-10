@@ -3,11 +3,11 @@ use std::hash::Hash;
 use std::ops::{Add, Div, Mul, Sub};
 
 use derivative::Derivative;
-use num_traits::{Inv, One, Zero};
+use num_traits::{Inv, One, Pow, Zero};
 
 use crate::composite::Composite;
 use crate::quantities::{Quantity, SystemOfQuantities};
-use crate::Rational;
+use crate::{Clopy, Integer, Rational};
 
 // note: IntelliJ Rust is not advanced enough for this file (8 false positive errors at the time of writing),
 // so always resort to cargo check instead!
@@ -281,6 +281,31 @@ where
 	}
 }
 
+impl<U: UnitSystem> Pow<Rational> for SimpleUnit<U> {
+	type Output = Self;
+
+	fn pow(self, rhs: Rational) -> Self::Output {
+		Self(self.0.pow(rhs))
+	}
+}
+
+impl<U: UnitSystem> Pow<Integer> for SimpleUnit<U> {
+	type Output = Self;
+
+	fn pow(self, rhs: Integer) -> Self::Output {
+		self.pow(Rational::from_integer(rhs))
+	}
+}
+
+#[cfg(feature = "big-arith")]
+impl<U: UnitSystem> Pow<i64> for SimpleUnit<U> {
+	type Output = Self;
+
+	fn pow(self, rhs: i64) -> Self::Output {
+		self.pow(Integer::from(rhs))
+	}
+}
+
 impl<U: UnitSystem> Div for SimpleUnit<U>
 where
 	U::BaseUnit: Hash + Eq,
@@ -429,6 +454,49 @@ where
 		ScalableUnit {
 			scale: rhs.scale,
 			unit: self * rhs.unit,
+		}
+	}
+}
+
+impl<U: UnitSystem, S> Pow<Rational> for ScalableUnit<U, S>
+where
+	S: Pow<Rational>,
+{
+	type Output = ScalableUnit<U, S::Output>;
+
+	fn pow(self, rhs: Rational) -> Self::Output {
+		ScalableUnit {
+			scale: self.scale.pow(rhs.clopy()),
+			unit: self.unit.pow(rhs),
+		}
+	}
+}
+
+impl<U: UnitSystem, S> Pow<Integer> for ScalableUnit<U, S>
+where
+	S: Pow<Integer>,
+{
+	type Output = ScalableUnit<U, S::Output>;
+
+	fn pow(self, rhs: Integer) -> Self::Output {
+		ScalableUnit {
+			scale: self.scale.pow(rhs.clopy()),
+			unit: self.unit.pow(rhs),
+		}
+	}
+}
+
+#[cfg(feature = "big-arith")]
+impl<U: UnitSystem, S> Pow<i64> for ScalableUnit<U, S>
+where
+	S: Pow<i64>,
+{
+	type Output = ScalableUnit<U, S::Output>;
+
+	fn pow(self, rhs: i64) -> Self::Output {
+		ScalableUnit {
+			scale: self.scale.pow(rhs),
+			unit: self.unit.pow(rhs),
 		}
 	}
 }

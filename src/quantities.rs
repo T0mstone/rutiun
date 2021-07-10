@@ -62,11 +62,12 @@ pub mod isq {
 		}
 	}
 
-	impl Pow<i32> for BaseQuantity {
+	#[cfg(feature = "big-arith")]
+	impl Pow<i64> for BaseQuantity {
 		type Output = Quantity<ISQ>;
 
 		#[inline]
-		fn pow(self, rhs: i32) -> Self::Output {
+		fn pow(self, rhs: i64) -> Self::Output {
 			self.pow(Integer::from(rhs))
 		}
 	}
@@ -250,6 +251,31 @@ where
 	}
 }
 
+impl<Q: SystemOfQuantities> Pow<Rational> for Quantity<Q> {
+	type Output = Self;
+
+	fn pow(self, rhs: Rational) -> Self::Output {
+		Self(self.0.pow(rhs))
+	}
+}
+
+impl<Q: SystemOfQuantities> Pow<Integer> for Quantity<Q> {
+	type Output = Self;
+
+	fn pow(self, rhs: Integer) -> Self::Output {
+		self.pow(Rational::from_integer(rhs))
+	}
+}
+
+#[cfg(feature = "big-arith")]
+impl<Q: SystemOfQuantities> Pow<i64> for Quantity<Q> {
+	type Output = Self;
+
+	fn pow(self, rhs: i64) -> Self::Output {
+		self.pow(Integer::from(rhs))
+	}
+}
+
 impl<Q: SystemOfQuantities> Div for Quantity<Q>
 where
 	Q::BaseQuantity: Hash + Eq,
@@ -266,22 +292,6 @@ impl<Q: SystemOfQuantities> Inv for Quantity<Q> {
 
 	fn inv(self) -> Self::Output {
 		Self(self.0.inv())
-	}
-}
-
-impl<Q: SystemOfQuantities> Pow<Rational> for Quantity<Q> {
-	type Output = Self;
-
-	fn pow(self, rhs: Rational) -> Self::Output {
-		Self(self.0.pow(rhs))
-	}
-}
-
-impl<Q: SystemOfQuantities> Pow<Integer> for Quantity<Q> {
-	type Output = Self;
-
-	fn pow(self, rhs: Integer) -> Self::Output {
-		Self(self.0.pow(Rational::from_integer(rhs)))
 	}
 }
 

@@ -6,7 +6,7 @@ use std::ops::{Div, Mul};
 use derivative::Derivative;
 use num_traits::{Inv, One, Pow};
 
-use crate::Rational;
+use crate::{Clopy, Rational};
 
 #[derive(Debug, Clone, Derivative)]
 #[derivative(
@@ -15,6 +15,7 @@ use crate::Rational;
 	Eq(bound = "K: Eq + Hash")
 )]
 pub struct Composite<K> {
+	// maybe-todo: some sort of array storage option (to leverage Copy)
 	pub powers: HashMap<K, Rational>,
 }
 
@@ -69,14 +70,7 @@ impl<K> Inv for Composite<K> {
 
 	fn inv(mut self) -> Self::Output {
 		self.powers.values_mut().for_each(|v| {
-			#[cfg(feature = "big-arith")]
-			{
-				*v = -v.clone();
-			}
-			#[cfg(not(feature = "big-arith"))]
-			{
-				*v = -*v;
-			}
+			*v = -v.clopy();
 		});
 
 		self
@@ -100,14 +94,7 @@ impl<K> Pow<Rational> for Composite<K> {
 
 	fn pow(mut self, rhs: Rational) -> Self::Output {
 		self.powers.values_mut().for_each(|v| {
-			#[cfg(feature = "big-arith")]
-			{
-				*v *= rhs.clone();
-			}
-			#[cfg(not(feature = "big-arith"))]
-			{
-				*v = rhs;
-			}
+			*v *= rhs.clopy();
 		});
 
 		self
