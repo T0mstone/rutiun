@@ -9,6 +9,7 @@ use crate::unit::{ScalableUnit, UnitForValue, UnitSystem};
 
 #[derive(Derivative)]
 #[derivative(
+	Copy(bound = "T: Copy, U: Copy"),
 	Clone(bound = "T: Clone, U: Clone"),
 	Debug(bound = "T: std::fmt::Debug, U: std::fmt::Debug"),
 	Eq(bound = "T: Eq, U: Eq"),
@@ -18,6 +19,17 @@ pub struct Value<S: UnitSystem, T, U: UnitForValue<S, T>> {
 	pub value: T,
 	pub unit: U,
 	_marker: PhantomData<S>,
+}
+
+impl<S: UnitSystem, T, U: UnitForValue<S, T>> Value<S, T, U> {
+	pub fn into_unit<U2: UnitForValue<S, T>>(self, target: U2) -> Value<S, T, U2> {
+		let value = target.convert_from_simple(self.unit.convert_to_simple(self.value));
+		Value {
+			value,
+			unit: target,
+			_marker: PhantomData,
+		}
+	}
 }
 
 impl<S: UnitSystem, T1, T2, U1: UnitForValue<S, T1>, U2: UnitForValue<S, T2>>
