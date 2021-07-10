@@ -4,19 +4,38 @@ use std::hash::Hash;
 use std::ops::{Div, Mul};
 
 use derivative::Derivative;
-use num_traits::{Inv, One, Pow};
+use num_traits::{Inv, One, Pow, Zero};
 
 use crate::{Clopy, Rational};
 
 #[derive(Debug, Clone, Derivative)]
-#[derivative(
-	Default(bound = ""),
-	PartialEq(bound = "K: Eq + Hash"),
-	Eq(bound = "K: Eq + Hash")
-)]
+#[derivative(Default(bound = ""), Eq(bound = "K: Eq + Hash"))]
 pub struct Composite<K> {
 	// maybe-todo: some sort of array storage option (to leverage Copy)
 	pub powers: HashMap<K, Rational>,
+}
+
+impl<K: Eq + Hash> PartialEq for Composite<K> {
+	fn eq(&self, other: &Self) -> bool {
+		for (k, v) in self.powers.iter() {
+			if other
+				.powers
+				.get(k)
+				.map_or_else(|| !v.is_zero(), |v2| v != v2)
+			{
+				// if the value is different in other, return false
+				// if the value doesn't exist in other, return false except when v == 0
+				return false;
+			}
+		}
+		// the same thing but backwards
+		for (k, v) in other.powers.iter() {
+			if self.powers.get(k).map_or(true, |v2| v != v2) {
+				return false;
+			}
+		}
+		true
+	}
 }
 
 impl<K> Composite<K> {
