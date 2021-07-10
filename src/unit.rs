@@ -170,6 +170,10 @@ pub mod si {
 		pub fn watt() -> Self {
 			Self::from_quantity(Quantity::power())
 		}
+
+		pub fn volt() -> Self {
+			Self::from_quantity(Quantity::electric_potential())
+		}
 	}
 
 	impl<S: From<u32>> ScalableUnit<SI, S> {
@@ -187,6 +191,8 @@ pub mod si {
 			}
 		}
 	}
+
+	// todo: SI prefixes
 
 	impl<S: One, O: From<f32>> AffineUnit<SI, S, O> {
 		pub fn degree_celsius() -> Self {
@@ -675,10 +681,13 @@ impl<U: UnitSystem, S, O> AffineUnit<U, S, O> {
 		Self: UnitForValue<U, V>,
 		V: Sub<O, Output = V>,
 	{
-		(value - self.offset, ScalableUnit {
-			scale: self.scale,
-			unit: self.unit,
-		})
+		(
+			value - self.offset,
+			ScalableUnit {
+				scale: self.scale,
+				unit: self.unit,
+			},
+		)
 	}
 }
 
