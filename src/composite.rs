@@ -30,7 +30,11 @@ impl<K: Eq + Hash> PartialEq for Composite<K> {
 		}
 		// the same thing but backwards
 		for (k, v) in other.powers.iter() {
-			if self.powers.get(k).map_or(true, |v2| v != v2) {
+			if self
+				.powers
+				.get(k)
+				.map_or_else(|| !v.is_zero(), |v2| v != v2)
+			{
 				return false;
 			}
 		}
