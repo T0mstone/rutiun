@@ -134,6 +134,12 @@ pub mod isq {
 		}
 	}
 
+	impl From<BaseQuantity> for Quantity<ISQ> {
+		fn from(base: BaseQuantity) -> Self {
+			Self::new_base(base)
+		}
+	}
+
 	impl Quantity<ISQ> {
 		#[inline]
 		pub fn area() -> Self {
