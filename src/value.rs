@@ -33,6 +33,10 @@ impl<S: UnitSystem, T, U: UnitForValue<S, T>> Value<S, T, U> {
 
 	pub fn into_unit<U2: UnitForValue<S, T>>(self, target: U2) -> Value<S, T, U2> {
 		let value = target.convert_from_simple(self.unit.convert_to_simple(self.value));
+		assert!(
+			target.is_of(self.unit.quantity()),
+			"invalid unit conversion"
+		);
 		Value {
 			value,
 			unit: target,
@@ -215,8 +219,9 @@ where
 	type Output = Value<S, T1::Output, U1>;
 
 	fn sub(self, rhs: Value<S, T2, U2>) -> Self::Output {
+		// todo: auto conversion
 		if self.unit != rhs.unit {
-			panic!("tried to subtract values with different units");
+			panic!("tried to subtract values with different units",);
 		}
 
 		Value {
