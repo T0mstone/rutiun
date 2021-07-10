@@ -547,12 +547,15 @@ where
 
 impl<U: UnitSystem, S> Pow<f64> for ScalableUnit<U, S>
 where
-	S: Pow<Rational>,
+	S: Pow<f64>,
 {
 	type Output = Option<ScalableUnit<U, S::Output>>;
 
 	fn pow(self, rhs: f64) -> Self::Output {
-		Some(self.pow(Rational::from_f64(rhs)?))
+		Some(ScalableUnit {
+			scale: self.scale.pow(rhs),
+			unit: self.unit.pow(Rational::from_f64(rhs)?),
+		})
 	}
 }
 
