@@ -2,7 +2,7 @@ use std::hash::Hash;
 use std::ops::{Div, Mul};
 
 use derivative::Derivative;
-use num_traits::{Inv, Pow};
+use num_traits::{FromPrimitive, Inv, Pow};
 
 use crate::composite::Composite;
 use crate::{Integer, Rational};
@@ -14,7 +14,7 @@ pub trait SystemOfQuantities {
 pub mod isq {
 	use std::ops::{Div, Mul};
 
-	use num_traits::{Inv, Pow};
+	use num_traits::{FromPrimitive, Inv, Pow};
 	use BaseQuantity::*;
 
 	use super::{Quantity, SystemOfQuantities};
@@ -69,6 +69,14 @@ pub mod isq {
 		#[inline]
 		fn pow(self, rhs: i64) -> Self::Output {
 			self.pow(Integer::from(rhs))
+		}
+	}
+
+	impl Pow<f64> for BaseQuantity {
+		type Output = Option<Quantity<ISQ>>;
+
+		fn pow(self, rhs: f64) -> Self::Output {
+			Some(self.pow(Rational::from_f64(rhs)?))
 		}
 	}
 
@@ -273,6 +281,14 @@ impl<Q: SystemOfQuantities> Pow<i64> for Quantity<Q> {
 
 	fn pow(self, rhs: i64) -> Self::Output {
 		self.pow(Integer::from(rhs))
+	}
+}
+
+impl<Q: SystemOfQuantities> Pow<f64> for Quantity<Q> {
+	type Output = Option<Self>;
+
+	fn pow(self, rhs: f64) -> Self::Output {
+		Some(self.pow(Rational::from_f64(rhs)?))
 	}
 }
 

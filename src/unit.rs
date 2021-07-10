@@ -3,7 +3,7 @@ use std::hash::Hash;
 use std::ops::{Add, Div, Mul, Sub};
 
 use derivative::Derivative;
-use num_traits::{Inv, One, Pow, Zero};
+use num_traits::{FromPrimitive, Inv, One, Pow, Zero};
 
 use crate::composite::Composite;
 use crate::quantities::{Quantity, SystemOfQuantities};
@@ -39,12 +39,13 @@ pub trait UnitForValue<U: UnitSystem, V>: Unit<U> {
 pub mod si {
 	use std::borrow::Cow;
 
-	use num_traits::One;
+	use num_traits::{FromPrimitive, One, Pow};
 
 	use super::{BaseUnit as BaseUnitT, SimpleUnit, UnitSystem};
 	use crate::quantities::isq::{BaseQuantity, ISQ};
 	use crate::quantities::Quantity;
 	use crate::unit::AffineUnit;
+	use crate::{Integer, Rational};
 
 	pub struct SI;
 
@@ -119,6 +120,41 @@ pub mod si {
 				BaseQuantity::Substance => "mol",
 				BaseQuantity::LumIntensity => "cd",
 			})
+		}
+	}
+
+	// todo: impl Mul, Div, Inv for BaseUnit (mirroring BaseQuantity)
+
+	impl Pow<Rational> for BaseUnit {
+		type Output = SimpleUnit<SI>;
+
+		fn pow(self, rhs: Rational) -> Self::Output {
+			SimpleUnit::from_quantity(self.0.pow(rhs))
+		}
+	}
+
+	impl Pow<Integer> for BaseUnit {
+		type Output = SimpleUnit<SI>;
+
+		fn pow(self, rhs: Integer) -> Self::Output {
+			self.pow(Rational::from_integer(rhs))
+		}
+	}
+
+	#[cfg(feature = "big-arith")]
+	impl Pow<i64> for BaseUnit {
+		type Output = SimpleUnit<SI>;
+
+		fn pow(self, rhs: i64) -> Self::Output {
+			self.pow(Integer::from(rhs))
+		}
+	}
+
+	impl Pow<f64> for BaseUnit {
+		type Output = Option<SimpleUnit<SI>>;
+
+		fn pow(self, rhs: f64) -> Self::Output {
+			Some(self.pow(Rational::from_f64(rhs)?))
 		}
 	}
 
@@ -303,6 +339,14 @@ impl<U: UnitSystem> Pow<i64> for SimpleUnit<U> {
 
 	fn pow(self, rhs: i64) -> Self::Output {
 		self.pow(Integer::from(rhs))
+	}
+}
+
+impl<U: UnitSystem> Pow<f64> for SimpleUnit<U> {
+	type Output = Option<Self>;
+
+	fn pow(self, rhs: f64) -> Self::Output {
+		Some(self.pow(Rational::from_f64(rhs)?))
 	}
 }
 
@@ -501,6 +545,17 @@ where
 	}
 }
 
+impl<U: UnitSystem, S> Pow<f64> for ScalableUnit<U, S>
+where
+	S: Pow<Rational>,
+{
+	type Output = Option<ScalableUnit<U, S::Output>>;
+
+	fn pow(self, rhs: f64) -> Self::Output {
+		Some(self.pow(Rational::from_f64(rhs)?))
+	}
+}
+
 impl<U: UnitSystem, S: Div<T>, T> Div<ScalableUnit<U, T>> for ScalableUnit<U, S>
 where
 	U::BaseUnit: Hash + Eq,
@@ -592,10 +647,13 @@ impl<U: UnitSystem, S, O> AffineUnit<U, S, O> {
 		Self: UnitForValue<U, V>,
 		V: Sub<O, Output = V>,
 	{
-		(value - self.offset, ScalableUnit {
-			scale: self.scale,
-			unit: self.unit,
-		})
+		(
+			value - self.offset,
+			ScalableUnit {
+				scale: self.scale,
+				unit: self.unit,
+			},
+		)
 	}
 }
 
