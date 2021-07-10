@@ -679,12 +679,15 @@ impl<U: UnitSystem, S, O> AffineUnit<U, S, O> {
 	pub fn untranslate<V>(self, value: V) -> (V, ScalableUnit<U, S>)
 	where
 		Self: UnitForValue<U, V>,
-		V: Sub<O, Output = V>,
+		V: Add<O, Output = V>,
 	{
-		(value - self.offset, ScalableUnit {
-			scale: self.scale,
-			unit: self.unit,
-		})
+		(
+			value + self.offset,
+			ScalableUnit {
+				scale: self.scale,
+				unit: self.unit,
+			},
+		)
 	}
 }
 

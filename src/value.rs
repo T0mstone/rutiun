@@ -275,7 +275,7 @@ where
 {
 	pub fn untranslate(self) -> Value<S, T, ScalableUnit<S, Z>>
 	where
-		T: Sub<O, Output = T>,
+		T: Add<O, Output = T>,
 		ScalableUnit<S, Z>: UnitForValue<S, T>,
 	{
 		let (value, unit) = self.unit.untranslate(self.value);
