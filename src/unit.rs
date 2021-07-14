@@ -85,12 +85,12 @@ pub mod si {
 	pub struct BaseUnit(pub BaseQuantity);
 
 	impl BaseUnit {
-		pub fn meter() -> Self {
-			Self(BaseQuantity::Length)
-		}
-
 		pub fn kilogram() -> Self {
 			Self(BaseQuantity::Mass)
+		}
+
+		pub fn meter() -> Self {
+			Self(BaseQuantity::Length)
 		}
 
 		pub fn second() -> Self {

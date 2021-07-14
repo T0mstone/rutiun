@@ -28,10 +28,10 @@ pub mod isq {
 
 	#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 	pub enum BaseQuantity {
-		/// length, L
-		Length,
 		/// mass, M
 		Mass,
+		/// length, L
+		Length,
 		/// time, T
 		Time,
 		/// electric current, I
