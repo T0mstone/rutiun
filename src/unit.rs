@@ -380,7 +380,11 @@ where
 			} else {
 				f.pad(" ")?;
 			}
-			f.write_fmt(format_args!("{}^{}", u.short_name(), pow))?;
+			if pow.is_one() {
+				f.write_fmt(format_args!("{}", u.short_name()))?;
+			} else {
+				f.write_fmt(format_args!("{}^{}", u.short_name(), pow))?;
+			}
 		}
 		Ok(())
 	}
