@@ -26,7 +26,7 @@ pub mod isq {
 		type BaseQuantity = BaseQuantity;
 	}
 
-	#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+	#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 	pub enum BaseQuantity {
 		/// length, L
 		Length,

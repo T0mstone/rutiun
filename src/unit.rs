@@ -1,5 +1,7 @@
 use std::borrow::Cow;
+use std::fmt;
 use std::hash::Hash;
+use std::marker::PhantomData;
 use std::ops::{Add, Div, Mul, Sub};
 
 use derivative::Derivative;
@@ -36,15 +38,30 @@ pub trait UnitForValue<U: UnitSystem, V>: Unit<U> {
 	fn convert_from_simple(&self, val: V) -> V;
 }
 
+pub trait UnitSymbols<U: Unit<Self>>: UnitSystem + Sized {
+	fn format(u: &U) -> String;
+}
+
+pub trait UnitExt<U: UnitSystem>: Unit<U> {
+	fn display(self) -> UnitSymbol<U, Self>
+	where
+		Self: Sized,
+	{
+		UnitSymbol(self, PhantomData)
+	}
+}
+
+impl<S: UnitSystem, U: Unit<S>> UnitExt<S> for U {}
+
 pub mod si {
 	use std::borrow::Cow;
 
-	use num_traits::{FromPrimitive, One, Pow};
+	use num_traits::{FromPrimitive, One, Pow, Signed, Zero};
 
 	use super::{BaseUnit as BaseUnitT, SimpleUnit, UnitSystem};
 	use crate::quantities::isq::{BaseQuantity, ISQ};
 	use crate::quantities::Quantity;
-	use crate::unit::{AffineUnit, ScalableUnit};
+	use crate::unit::{AffineUnit, ScalableUnit, UnitSymbols};
 	use crate::{Integer, Rational};
 
 	pub struct SI;
@@ -63,7 +80,7 @@ pub mod si {
 		}
 	}
 
-	#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+	#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 	#[repr(transparent)]
 	pub struct BaseUnit(pub BaseQuantity);
 
@@ -204,6 +221,38 @@ pub mod si {
 		}
 	}
 
+	impl UnitSymbols<SimpleUnit<SI>> for SI {
+		fn format(u: &SimpleUnit<SI>) -> String {
+			let known_units = [
+				(SimpleUnit::joule(), "J"),
+				(SimpleUnit::watt(), "W"),
+				(SimpleUnit::newton(), "N"),
+				(SimpleUnit::volt(), "V"),
+			];
+
+			for (u2, s) in &known_units {
+				if u == u2 {
+					return s.to_string();
+				}
+			}
+
+			for (u2, s) in known_units {
+				let mut res: SimpleUnit<SI> = u.clone() / u2;
+				res.0.powers.retain(|_, r| !r.is_zero());
+				if res.0.powers.len() == 1 {
+					let (unit, power) = res.0.powers.iter().next().unwrap();
+					if power.abs().is_one() {
+						let delim = if power.is_negative() { "/" } else { " " };
+						return format!("{}{}{}", s, delim, unit.short_name());
+					}
+				}
+			}
+
+			// fallback: for the rest just use the usual display impl
+			format!("{}", u)
+		}
+	}
+
 	/*
 	pub enum Prefix {
 	Deca,
@@ -291,6 +340,23 @@ pub mod si {
 
 #[derive(Derivative)]
 #[derivative(
+	Debug(bound = "U: std::fmt::Debug"),
+	Clone(bound = "U: Clone"),
+	PartialEq(bound = "U: PartialEq"),
+	Eq(bound = "U: Eq"),
+	Default(bound = "U: Default")
+)]
+#[repr(transparent)]
+pub struct UnitSymbol<S: UnitSystem, U: Unit<S>>(U, PhantomData<S>);
+
+impl<S: UnitSymbols<U>, U: Unit<S>> fmt::Display for UnitSymbol<S, U> {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		f.pad(&S::format(&self.0))
+	}
+}
+
+#[derive(Derivative)]
+#[derivative(
 	Debug(bound = "U::BaseUnit: std::fmt::Debug"),
 	Clone(bound = "U::BaseUnit: Clone"),
 	PartialEq(bound = "U::BaseUnit: Eq + Hash"),
@@ -299,6 +365,26 @@ pub mod si {
 )]
 #[repr(transparent)]
 pub struct SimpleUnit<U: UnitSystem>(pub(crate) Composite<U::BaseUnit>);
+
+impl<U: UnitSystem> fmt::Display for SimpleUnit<U>
+where
+	U::BaseUnit: Ord,
+{
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		let mut powers = self.0.powers.iter().collect::<Vec<_>>();
+		powers.sort();
+		let mut first = true;
+		for (u, pow) in powers.into_iter() {
+			if first {
+				first = false;
+			} else {
+				f.pad(" ")?;
+			}
+			f.write_fmt(format_args!("{}^{}", u.short_name(), pow))?;
+		}
+		Ok(())
+	}
+}
 
 impl<U: UnitSystem> Unit<U> for SimpleUnit<U>
 where
