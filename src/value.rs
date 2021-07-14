@@ -326,29 +326,48 @@ where
 	}
 }
 
-pub fn to_lowest_scale<S: UnitSystem, T, Sc>(v: &mut Vec<Value<S, T, ScalableUnit<S, Sc>>>)
+pub fn to_lowest_scale<S: UnitSystem, T, Sc>(
+	v: &mut Vec<Value<S, T, ScalableUnit<S, Sc>>>,
+) -> Option<ScalableUnit<S, Sc>>
 where
 	S::BaseQuantity: Hash + Eq,
-	S::BaseUnit: Hash + Eq,
+	S::BaseUnit: Hash + Eq + Clone,
 	T: Clone + Mul<Sc, Output = T> + Div<Sc, Output = T>,
 	Sc: Clone + PartialOrd + Div<Output = Sc>,
 {
 	if v.is_empty() {
-		return;
+		return None;
 	}
-	let lowest_scale = v
-		.iter()
-		.map(|v| &v.unit.scale)
-		.fold(None, |acc, x| match acc {
-			None => Some(x),
-			Some(y) if x < y => Some(x),
-			Some(y) => Some(y),
-		})
-		.unwrap()
-		.clone();
+	// check same unit
+	let mut unit = None;
+	let mut lowest_scale: Option<&Sc> = None;
+	for val in &*v {
+		match unit {
+			None => unit = Some(&val.unit.unit),
+			Some(un) => {
+				if val.unit.unit != *un {
+					// only allowed with vecs of the same unit
+					// todo: error enum
+					return None;
+				}
+			}
+		}
+		lowest_scale = Some(match lowest_scale {
+			None => &val.unit.scale,
+			Some(sc) if val.unit.scale < *sc => &val.unit.scale,
+			Some(sc) => sc,
+		});
+	}
+	let lowest_scale = lowest_scale.unwrap().clone();
+	let unit = unit.unwrap().clone();
+
 	for v in v {
 		let fac = v.unit.scale.clone() / lowest_scale.clone();
 		v.unit.scale = lowest_scale.clone();
 		v.value = v.value.clone() * fac;
 	}
+	Some(ScalableUnit {
+		scale: lowest_scale,
+		unit,
+	})
 }
