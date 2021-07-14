@@ -325,3 +325,30 @@ where
 		}
 	}
 }
+
+pub fn to_lowest_scale<S: UnitSystem, T, Sc>(v: &mut Vec<Value<S, T, ScalableUnit<S, Sc>>>)
+where
+	S::BaseQuantity: Hash + Eq,
+	S::BaseUnit: Hash + Eq,
+	T: Clone + Mul<Sc, Output = T> + Div<Sc, Output = T>,
+	Sc: Clone + PartialOrd + Div<Output = Sc>,
+{
+	if v.is_empty() {
+		return;
+	}
+	let lowest_scale = v
+		.iter()
+		.map(|v| &v.unit.scale)
+		.fold(None, |acc, x| match acc {
+			None => Some(x),
+			Some(y) if x < y => Some(x),
+			Some(y) => Some(y),
+		})
+		.unwrap()
+		.clone();
+	for v in v {
+		let fac = v.unit.scale.clone() / lowest_scale.clone();
+		v.unit.scale = lowest_scale.clone();
+		v.value = v.value.clone() * fac;
+	}
+}
