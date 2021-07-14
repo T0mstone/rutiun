@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::hash::Hash;
 use std::marker::PhantomData;
 use std::ops::{Add, Div, Mul, Neg, Sub};
@@ -64,6 +65,44 @@ where
 {
 	fn eq(&self, other: &Value<S, T2, U2>) -> bool {
 		self.value == other.value && self.unit == other.unit
+	}
+}
+
+impl<S: UnitSystem, T1, T2, U1: UnitForValue<S, T1>, U2: UnitForValue<S, T2>>
+	PartialOrd<Value<S, T2, U2>> for Value<S, T1, U1>
+where
+	T1: PartialOrd<T2> + Clone,
+	U1: PartialEq<U2>,
+	T2: Clone,
+	S::BaseQuantity: Hash + Eq,
+	S::BaseUnit: Hash + Eq,
+{
+	fn partial_cmp(&self, other: &Value<S, T2, U2>) -> Option<Ordering> {
+		if self.unit == other.unit {
+			self.value.partial_cmp(&other.value)
+		} else {
+			self.unit
+				.convert_to_simple(self.value.clone())
+				.partial_cmp(&other.unit.convert_to_simple(other.value.clone()))
+		}
+	}
+}
+
+impl<S: UnitSystem, T, U: UnitForValue<S, T>> Ord for Value<S, T, U>
+where
+	T: Ord + Clone,
+	U: Eq,
+	S::BaseQuantity: Hash + Eq,
+	S::BaseUnit: Hash + Eq,
+{
+	fn cmp(&self, other: &Value<S, T, U>) -> Ordering {
+		if self.unit == other.unit {
+			self.value.cmp(&other.value)
+		} else {
+			self.unit
+				.convert_to_simple(self.value.clone())
+				.cmp(&other.unit.convert_to_simple(other.value.clone()))
+		}
 	}
 }
 
