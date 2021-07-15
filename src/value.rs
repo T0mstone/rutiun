@@ -8,7 +8,7 @@ use num_traits::{FromPrimitive, Inv, One, Pow, ToPrimitive, Zero};
 
 use crate::si::SI;
 use crate::unit::si::{Prefix, PrefixCompatible};
-use crate::unit::{AffineUnit, ScalableUnit, UnitForValue, UnitSystem};
+use crate::unit::{AffineUnit, ScalableUnit, SimpleUnit, UnitForValue, UnitSystem};
 use crate::{Clopy, Integer, Rational};
 
 #[derive(Derivative)]
@@ -54,34 +54,6 @@ impl<S: UnitSystem, T, U: UnitForValue<S, T>> Value<S, T, U> {
 		Value {
 			value: f(self.value),
 			unit: self.unit,
-			_marker: PhantomData,
-		}
-	}
-}
-
-impl<T, S> Value<SI, T, ScalableUnit<SI, S>>
-where
-	T: Mul<S, Output = T> + Div<S, Output = T>,
-	S: Clone,
-{
-	pub fn into_with_si_prefix(
-		self,
-		allow_sub_thousand: bool,
-	) -> Value<SI, PrefixCompatible<T>, ScalableUnit<SI, Prefix>>
-	where
-		T: FromPrimitive + Div<Output = T> + Mul<Output = T>,
-		S: FromPrimitive + ToPrimitive,
-	{
-		let (fac, scale) = Prefix::from_f32(self.unit.scale.to_f32().unwrap(), allow_sub_thousand);
-
-		let unit = ScalableUnit {
-			scale,
-			unit: self.unit.unit,
-		};
-
-		Value {
-			value: PrefixCompatible(self.value * T::from_f32(fac).unwrap()),
-			unit,
 			_marker: PhantomData,
 		}
 	}
@@ -351,6 +323,68 @@ where
 		Value {
 			value,
 			unit,
+			_marker: PhantomData,
+		}
+	}
+}
+
+impl<T, S> Value<SI, T, ScalableUnit<SI, S>>
+where
+	T: Mul<S, Output = T> + Div<S, Output = T>,
+	S: Clone,
+{
+	pub fn into_with_si_prefix(
+		self,
+		allow_sub_thousand: bool,
+	) -> Value<SI, PrefixCompatible<T>, ScalableUnit<SI, Prefix>>
+	where
+		T: FromPrimitive + Div<Output = T> + Mul<Output = T>,
+		S: FromPrimitive + ToPrimitive,
+	{
+		let (fac, scale) = Prefix::from_f32(self.unit.scale.to_f32().unwrap(), allow_sub_thousand);
+
+		let unit = ScalableUnit {
+			scale,
+			unit: self.unit.unit,
+		};
+
+		Value {
+			value: PrefixCompatible(self.value * T::from_f32(fac).unwrap()),
+			unit,
+			_marker: PhantomData,
+		}
+	}
+}
+
+impl<S: UnitSystem, T, Sc> Value<S, T, ScalableUnit<S, Sc>>
+where
+	T: Mul<Sc, Output = T> + Div<Sc, Output = T>,
+	Sc: Clone,
+	S::BaseQuantity: Hash + Eq,
+	S::BaseUnit: Hash + Eq,
+{
+	pub fn apply_scale(self) -> Value<S, T, SimpleUnit<S>>
+	where
+		S::BaseUnit: Clone,
+	{
+		let unit = self.unit.unit.clone();
+		self.into_unit(unit)
+	}
+}
+
+impl<S: UnitSystem, T> Value<S, T, SimpleUnit<S>>
+where
+	S::BaseQuantity: Hash + Eq,
+	S::BaseUnit: Hash + Eq,
+{
+	pub fn into_scalable<Sc>(self) -> Value<S, T, ScalableUnit<S, Sc>>
+	where
+		T: Mul<Sc, Output = T> + Div<Sc, Output = T>,
+		Sc: Clone + One,
+	{
+		Value {
+			value: self.value,
+			unit: ScalableUnit::from(self.unit),
 			_marker: PhantomData,
 		}
 	}
