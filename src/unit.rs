@@ -503,6 +503,9 @@ where
 		powers.sort();
 		let mut first = true;
 		for (u, pow) in powers.into_iter() {
+			if pow.is_zero() {
+				continue;
+			}
 			if first {
 				first = false;
 			} else {
