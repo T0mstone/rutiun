@@ -4,8 +4,10 @@ use std::marker::PhantomData;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
 use derivative::Derivative;
-use num_traits::{Inv, One, Pow, Zero};
+use num_traits::{FromPrimitive, Inv, One, Pow, ToPrimitive, Zero};
 
+use crate::si::SI;
+use crate::unit::si::{Prefix, PrefixCompatible};
 use crate::unit::{AffineUnit, ScalableUnit, UnitForValue, UnitSystem};
 use crate::{Clopy, Integer, Rational};
 
@@ -52,6 +54,34 @@ impl<S: UnitSystem, T, U: UnitForValue<S, T>> Value<S, T, U> {
 		Value {
 			value: f(self.value),
 			unit: self.unit,
+			_marker: PhantomData,
+		}
+	}
+}
+
+impl<T, S> Value<SI, T, ScalableUnit<SI, S>>
+where
+	T: Mul<S, Output = T> + Div<S, Output = T>,
+	S: Clone,
+{
+	pub fn into_with_si_prefix(
+		self,
+		allow_sub_thousand: bool,
+	) -> Value<SI, PrefixCompatible<T>, ScalableUnit<SI, Prefix>>
+	where
+		T: FromPrimitive + Div<Output = T> + Mul<Output = T>,
+		S: FromPrimitive + ToPrimitive,
+	{
+		let (fac, scale) = Prefix::from_f32(self.unit.scale.to_f32().unwrap(), allow_sub_thousand);
+
+		let unit = ScalableUnit {
+			scale,
+			unit: self.unit.unit,
+		};
+
+		Value {
+			value: PrefixCompatible(self.value * T::from_f32(fac).unwrap()),
+			unit,
 			_marker: PhantomData,
 		}
 	}

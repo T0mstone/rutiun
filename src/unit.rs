@@ -55,6 +55,8 @@ impl<S: UnitSystem, U: Unit<S>> UnitExt<S> for U {}
 
 pub mod si {
 	use std::borrow::Cow;
+	use std::cmp::Ordering;
+	use std::ops::{Add, Div, Mul, Sub};
 
 	use num_traits::{FromPrimitive, One, Pow, Signed, Zero};
 
@@ -209,8 +211,6 @@ pub mod si {
 		}
 	}
 
-	// todo: SI prefixes
-
 	impl<S: One, O: From<f32>> AffineUnit<SI, S, O> {
 		pub fn degree_celsius() -> Self {
 			Self {
@@ -253,89 +253,217 @@ pub mod si {
 		}
 	}
 
-	/*
+	#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 	pub enum Prefix {
-	Deca,
-	Hecto,
-	Kilo,
-	Mega,
-	Giga,
-	Tera,
-	Peta,
-	Exa,
-	Zetta,
-	Yotta,
+		None,
 
-	Deci,
-	Centi,
-	Milli,
-	Micro,
-	Nano,
-	Pico,
-	Femto,
-	Atto,
-	Zepto,
-	Yocto,
+		Deca,
+		Hecto,
+		Kilo,
+		Mega,
+		Giga,
+		Tera,
+		Peta,
+		Exa,
+		Zetta,
+		Yotta,
+
+		Deci,
+		Centi,
+		Milli,
+		Micro,
+		Nano,
+		Pico,
+		Femto,
+		Atto,
+		Zepto,
+		Yocto,
+	}
+
+	impl PartialOrd for Prefix {
+		fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+			Some(self.cmp(other))
+		}
+	}
+
+	impl Ord for Prefix {
+		fn cmp(&self, other: &Self) -> Ordering {
+			self.tens_exponent().cmp(&other.tens_exponent())
+		}
 	}
 
 	impl Prefix {
-	pub fn tens_exponent(&self) -> i8 {
-	use Prefix::*;
+		pub fn tens_exponent(&self) -> i8 {
+			use Prefix::*;
 
-	match self {
-	Deca => 1,
-	Hecto => 2,
-	Kilo => 3,
-	Mega => 6,
-	Giga => 9,
-	Tera => 12,
-	Peta => 15,
-	Exa => 18,
-	Zetta => 21,
-	Yotta => 24,
+			match self {
+				None => 0,
 
-	Deci => -1,
-	Centi => -2,
-	Milli => -3,
-	Micro => -6,
-	Nano => -9,
-	Pico => -12,
-	Femto => -15,
-	Atto => -18,
-	Zepto => -21,
-	Yocto => -24,
-	}
+				Deca => 1,
+				Hecto => 2,
+				Kilo => 3,
+				Mega => 6,
+				Giga => 9,
+				Tera => 12,
+				Peta => 15,
+				Exa => 18,
+				Zetta => 21,
+				Yotta => 24,
+
+				Deci => -1,
+				Centi => -2,
+				Milli => -3,
+				Micro => -6,
+				Nano => -9,
+				Pico => -12,
+				Femto => -15,
+				Atto => -18,
+				Zepto => -21,
+				Yocto => -24,
+			}
+		}
+
+		pub fn floor_from_tens_exponent(exp: i8, allow_sub_thousand: bool) -> (Self, i8) {
+			use Prefix::*;
+
+			match exp {
+				1 if allow_sub_thousand => (Deca, 0),
+				2 if allow_sub_thousand => (Hecto, 0),
+
+				0..=2 => (None, exp),
+
+				3..=5 => (Kilo, exp - 3),
+				6..=8 => (Mega, exp - 6),
+				9..=11 => (Giga, exp - 9),
+				12..=14 => (Tera, exp - 12),
+				15..=17 => (Peta, exp - 15),
+				18..=20 => (Exa, exp - 18),
+				21..=23 => (Zetta, exp - 21),
+				24..=i8::MAX => (Yotta, exp - 24),
+
+				-1 if allow_sub_thousand => (Deci, 0),
+				-2 if allow_sub_thousand => (Centi, 0),
+				-3..=-1 => (Milli, exp + 3),
+				-6..=-4 => (Micro, exp + 6),
+				-9..=-7 => (Nano, exp + 9),
+				-12..=-10 => (Pico, exp + 12),
+				-15..=-13 => (Femto, exp + 15),
+				-18..=-16 => (Atto, exp + 18),
+				-21..=-19 => (Zepto, exp + 21),
+				i8::MIN..=-22 => (Yocto, exp + 24),
+			}
+		}
+
+		pub fn try_from_tens_exponent(exp: i8, allow_sub_thousand: bool) -> Option<Self> {
+			let (res, exp) = Self::floor_from_tens_exponent(exp, allow_sub_thousand);
+			(exp == 0).then(|| res)
+		}
+
+		pub fn f32(&self) -> f32 {
+			f32::pow(10.0, self.tens_exponent())
+		}
+
+		pub fn from_f32(f: f32, allow_sub_thousand: bool) -> (f32, Self) {
+			let exp = f.log10();
+
+			let exp_floor = {
+				let tmp = exp.floor();
+				if tmp > i8::MAX as f32 {
+					i8::MAX
+				} else if tmp < i8::MIN as f32 {
+					i8::MIN
+				} else {
+					tmp as i8
+				}
+			};
+
+			let (prefix, leftover) = Self::floor_from_tens_exponent(exp_floor, allow_sub_thousand);
+
+			let to_subtract = exp_floor - leftover;
+
+			let rem_fac = 10f32.powf(exp - to_subtract as f32);
+			(rem_fac, prefix)
+		}
+
+		pub fn try_from_f32(f: f32, allow_sub_thousand: bool) -> Option<Self> {
+			let (fac, res) = Self::from_f32(f, allow_sub_thousand);
+			((fac - 1.0).abs() < f32::EPSILON).then(|| res)
+		}
+
+		pub fn symbol(&self) -> Option<&'static str> {
+			use Prefix::*;
+
+			Some(match self {
+				None => return Option::None,
+
+				Deca => "da",
+				Hecto => "h",
+				Kilo => "k",
+				Mega => "M",
+				Giga => "G",
+				Tera => "T",
+				Peta => "P",
+				Exa => "E",
+				Zetta => "Z",
+				Yotta => "Y",
+
+				Deci => "d",
+				Centi => "c",
+				Milli => "m",
+				Micro => "μ",
+				Nano => "n",
+				Pico => "p",
+				Femto => "f",
+				Atto => "a",
+				Zepto => "z",
+				Yocto => "y",
+			})
+		}
 	}
 
-	pub fn symbol(&self) -> &'static str {
-	use Prefix::*;
+	#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+	pub struct PrefixCompatible<V>(pub V);
 
-	match self {
-	Deca => "da",
-	Hecto => "h",
-	Kilo => "k",
-	Mega => "M",
-	Giga => "G",
-	Tera => "T",
-	Peta => "P",
-	Exa => "E",
-	Zetta => "Z",
-	Yotta => "Y",
+	impl<V: FromPrimitive + Add> Add<Prefix> for PrefixCompatible<V> {
+		type Output = PrefixCompatible<<V as Add>::Output>;
 
-	Deci => "d",
-	Centi => "c",
-	Milli => "m",
-	Micro => "μ",
-	Nano => "n",
-	Pico => "p",
-	Femto => "f",
-	Atto => "a",
-	Zepto => "z",
-	Yocto => "y",
+		fn add(self, rhs: Prefix) -> Self::Output {
+			PrefixCompatible(self.0 + V::from_f32(rhs.f32()).unwrap())
+		}
 	}
+
+	impl<V: FromPrimitive + Sub> Sub<Prefix> for PrefixCompatible<V> {
+		type Output = PrefixCompatible<<V as Sub>::Output>;
+
+		fn sub(self, rhs: Prefix) -> Self::Output {
+			PrefixCompatible(self.0 - V::from_f32(rhs.f32()).unwrap())
+		}
 	}
+
+	impl<V: FromPrimitive + Mul> Mul<Prefix> for PrefixCompatible<V> {
+		type Output = PrefixCompatible<<V as Mul>::Output>;
+
+		fn mul(self, rhs: Prefix) -> Self::Output {
+			PrefixCompatible(self.0 * V::from_f32(rhs.f32()).unwrap())
+		}
 	}
-	*/
+
+	impl<V: FromPrimitive + Div> Div<Prefix> for PrefixCompatible<V> {
+		type Output = PrefixCompatible<<V as Div>::Output>;
+
+		fn div(self, rhs: Prefix) -> Self::Output {
+			PrefixCompatible(self.0 / V::from_f32(rhs.f32()).unwrap())
+		}
+	}
+
+	impl UnitSymbols<ScalableUnit<SI, Prefix>> for SI {
+		fn format(u: &ScalableUnit<SI, Prefix>) -> String {
+			match u.scale.symbol() {
+				None => Self::format(&u.unit),
+				Some(sym) => format!("{} {}", sym, Self::format(&u.unit)),
+			}
+		}
+	}
 }
 
 #[derive(Derivative)]
